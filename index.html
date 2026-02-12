@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
   <head>
@@ -52,12 +53,16 @@
     "recharts": "https://aistudiocdn.com/recharts@^3.5.1",
     "date-fns/": "https://aistudiocdn.com/date-fns@^4.1.0/",
     "jspdf": "https://aistudiocdn.com/jspdf@^2.5.1",
-    "jspdf-autotable": "https://aistudiocdn.com/jspdf-autotable@^3.8.2"
+    "jspdf-autotable": "https://aistudiocdn.com/jspdf-autotable@^3.8.2",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.4",
+    "vite": "https://esm.sh/vite@^7.3.1"
   }
 }
 </script>
 </head>
   <body class="bg-slate-50 dark:bg-slate-950 transition-colors duration-200 overscroll-y-none">
     <div id="root"></div>
+    <!-- Ponto de entrada para o build do Vite -->
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>
