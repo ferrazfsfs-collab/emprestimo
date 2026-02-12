@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StorageService } from '../services/storage';
 import { Card, Button, Input, Select, formatCurrency } from '../components/ui';
-import { Wallet, Save, Moon, Sun, Lock, LogOut, Database, Download, Upload, Globe } from 'lucide-react';
+import { Wallet, Save, Moon, Sun, Lock, LogOut, Database, Download, Upload, Globe, Building2, PhoneCall, Headphones } from 'lucide-react';
 import { CurrencyCode } from '../types';
 
 interface SettingsProps {
@@ -14,6 +14,11 @@ const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isDark, setIsDark] = useState(false);
   const [currency, setCurrency] = useState<CurrencyCode>('BRL');
+  
+  // Company Info State
+  const [companyName, setCompanyName] = useState('');
+  const [supportPhone, setSupportPhone] = useState('');
+  const [isEditingCompany, setIsEditingCompany] = useState(false);
   
   // Security State
   const [hasPin, setHasPin] = useState(false);
@@ -29,6 +34,8 @@ const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
     setEditCapital(config.capitalBalance.toString());
     setHasPin(!!config.securityPin);
     setCurrency(config.currency || 'BRL');
+    setCompanyName(config.companyName || 'Fersami SU');
+    setSupportPhone(config.supportPhone || '949054619');
 
     // Check theme
     if (document.documentElement.classList.contains('dark')) {
@@ -46,11 +53,18 @@ const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
     }
   };
 
+  const handleSaveCompany = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Apenas o nome da empresa é editável agora
+    StorageService.saveCompanyInfo(companyName, supportPhone);
+    setIsEditingCompany(false);
+    window.dispatchEvent(new Event('configUpdate'));
+  };
+
   const handleCurrencyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newCurrency = e.target.value as CurrencyCode;
     setCurrency(newCurrency);
     StorageService.setCurrency(newCurrency);
-    // Reload to apply formatting everywhere
     window.location.reload();
   };
 
@@ -89,9 +103,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
   const handleBackup = () => {
     const dataStr = StorageService.exportDatabase();
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    
     const exportFileDefaultName = `backup_emprestimos_${new Date().toISOString().slice(0,10)}.json`;
-    
     const linkElement = document.createElement('a');
     linkElement.setAttribute('href', dataUri);
     linkElement.setAttribute('download', exportFileDefaultName);
@@ -105,7 +117,6 @@ const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileObj = e.target.files && e.target.files[0];
     if (!fileObj) return;
-
     const reader = new FileReader();
     reader.onload = (event) => {
         const json = event.target?.result as string;
@@ -122,7 +133,6 @@ const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
         }
     };
     reader.readAsText(fileObj);
-    // Reset input
     e.target.value = ''; 
   };
 
@@ -137,6 +147,31 @@ const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
              )}
         </div>
 
+        {/* Company Data - Apenas nome editável */}
+        <Card title="Dados da Empresa">
+            <div className="flex items-center gap-4 mb-4">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-emerald-100 text-emerald-600 dark:bg-emerald-900 dark:text-emerald-400">
+                    <Building2 size={20} />
+                </div>
+                <div>
+                    <h3 className="font-semibold text-slate-900 dark:text-white">{companyName}</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Personalize o nome exibido no app</p>
+                </div>
+            </div>
+
+            {isEditingCompany ? (
+                <form onSubmit={handleSaveCompany} className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-700">
+                    <Input label="Nome da Empresa" value={companyName} onChange={e => setCompanyName(e.target.value)} />
+                    <div className="flex gap-2">
+                        <Button variant="outline" type="button" onClick={() => setIsEditingCompany(false)} className="flex-1">Cancelar</Button>
+                        <Button type="submit" className="flex-1">Salvar</Button>
+                    </div>
+                </form>
+            ) : (
+                <Button onClick={() => setIsEditingCompany(true)} variant="outline" className="w-full text-sm">Editar Nome</Button>
+            )}
+        </Card>
+
         {/* Currency Settings */}
         <Card title="Moeda e Região">
            <div className="flex items-center gap-4 mb-4">
@@ -148,16 +183,10 @@ const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
                     <p className="text-xs text-slate-500 dark:text-slate-400">Define o símbolo e formatação</p>
                 </div>
             </div>
-            
             <div className="bg-slate-50 dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-700 mb-4 text-sm">
                 Exemplo de formatação: <b>{formatCurrency(1250.50)}</b>
             </div>
-
-            <Select 
-                label="Selecione a Moeda" 
-                value={currency} 
-                onChange={handleCurrencyChange}
-            >
+            <Select label="Selecione a Moeda" value={currency} onChange={handleCurrencyChange}>
                 <option value="BRL">Real Brasileiro (BRL - R$)</option>
                 <option value="USD">Dólar Americano (USD - $)</option>
                 <option value="EUR">Euro (EUR - €)</option>
@@ -179,18 +208,9 @@ const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
                     </p>
                 </div>
             </div>
-
             {isSettingPin ? (
               <form onSubmit={handleSavePin} className="space-y-3 p-3 bg-slate-50 dark:bg-slate-900 rounded-lg">
-                <Input 
-                  label="Novo PIN (4 dígitos)"
-                  type="number"
-                  pattern="\d*"
-                  maxLength={4}
-                  value={newPin}
-                  onChange={e => setNewPin(e.target.value.slice(0, 4))}
-                  placeholder="0000"
-                />
+                <Input label="Novo PIN (4 dígitos)" type="number" pattern="\d*" maxLength={4} value={newPin} onChange={e => setNewPin(e.target.value.slice(0, 4))} placeholder="0000" />
                 <div className="flex gap-2">
                   <Button variant="outline" type="button" onClick={() => setIsSettingPin(false)} className="flex-1">Cancelar</Button>
                   <Button type="submit" className="flex-1">Salvar</Button>
@@ -198,13 +218,9 @@ const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
               </form>
             ) : (
               <div className="flex gap-2">
-                <Button onClick={() => setIsSettingPin(true)} variant="outline" className="flex-1 text-sm">
-                  {hasPin ? 'Alterar PIN' : 'Criar PIN'}
-                </Button>
+                <Button onClick={() => setIsSettingPin(true)} variant="outline" className="flex-1 text-sm">{hasPin ? 'Alterar PIN' : 'Criar PIN'}</Button>
                 {hasPin && (
-                  <Button onClick={handleRemovePin} variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/20">
-                    Remover
-                  </Button>
+                  <Button onClick={handleRemovePin} variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/20">Remover</Button>
                 )}
               </div>
             )}
@@ -221,25 +237,11 @@ const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
                     <p className="text-xs text-slate-500 dark:text-slate-400">Salve ou transfira seus dados</p>
                 </div>
             </div>
-            
             <div className="flex gap-3">
-                <Button onClick={handleBackup} className="flex-1 flex items-center justify-center gap-2 text-sm bg-slate-800 dark:bg-slate-700">
-                    <Download size={16} /> Backup
-                </Button>
-                <Button onClick={handleRestoreClick} variant="outline" className="flex-1 flex items-center justify-center gap-2 text-sm border-blue-200 text-blue-700 dark:border-blue-800 dark:text-blue-400">
-                    <Upload size={16} /> Restaurar
-                </Button>
-                <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    className="hidden" 
-                    accept=".json" 
-                    onChange={handleFileChange}
-                />
+                <Button onClick={handleBackup} className="flex-1 flex items-center justify-center gap-2 text-sm bg-slate-800 dark:bg-slate-700"><Download size={16} /> Backup</Button>
+                <Button onClick={handleRestoreClick} variant="outline" className="flex-1 flex items-center justify-center gap-2 text-sm border-blue-200 text-blue-700 dark:border-blue-800 dark:text-blue-400"><Upload size={16} /> Restaurar</Button>
+                <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleFileChange} />
             </div>
-            <p className="text-[10px] text-slate-400 mt-2 text-center">
-                Use "Backup" para salvar seus dados e "Restaurar" para carregar em outro aparelho.
-            </p>
         </Card>
 
         {/* Theme Toggle */}
@@ -254,39 +256,24 @@ const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
                         <p className="text-xs text-slate-500 dark:text-slate-400">Alternar entre claro e escuro</p>
                     </div>
                 </div>
-                <button 
-                  onClick={toggleTheme}
-                  className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out ${isDark ? 'bg-emerald-600' : 'bg-slate-300'}`}
-                >
+                <button onClick={toggleTheme} className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out ${isDark ? 'bg-emerald-600' : 'bg-slate-300'}`}>
                     <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ${isDark ? 'translate-x-6' : 'translate-x-0'}`} />
                 </button>
             </div>
         </Card>
 
+        {/* Fundo de Negócio */}
         <Card title="Fundo de Negócio (Plafond)">
             <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 rounded-full bg-slate-900 dark:bg-slate-700 flex items-center justify-center text-white">
-                    <Wallet size={24} />
-                </div>
+                <div className="w-12 h-12 rounded-full bg-slate-900 dark:bg-slate-700 flex items-center justify-center text-white"><Wallet size={24} /></div>
                 <div>
                     <p className="text-sm text-slate-500 dark:text-slate-400">Saldo Atual</p>
                     <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(capital)}</p>
                 </div>
             </div>
-
-            <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300 mb-6">
-                Este valor representa o dinheiro físico disponível para empréstimos. 
-            </div>
-
             {isEditing ? (
                 <form onSubmit={handleSaveCapital} className="space-y-4">
-                     <Input 
-                        label="Definir Novo Saldo" 
-                        type="number"
-                        step="0.01"
-                        value={editCapital}
-                        onChange={(e) => setEditCapital(e.target.value)}
-                     />
+                     <Input label="Definir Novo Saldo" type="number" step="0.01" value={editCapital} onChange={(e) => setEditCapital(e.target.value)} />
                      <div className="flex gap-2">
                          <Button variant="outline" onClick={() => setIsEditing(false)} type="button">Cancelar</Button>
                          <Button type="submit" className="flex items-center gap-2"><Save size={16} /> Salvar Alteração</Button>
@@ -297,8 +284,22 @@ const Settings: React.FC<SettingsProps> = ({ onLogout }) => {
             )}
         </Card>
 
-        <div className="text-center text-xs text-slate-400 mt-10">
-            Versão 1.5.0
+        {/* SEÇÃO DE APOIO FIXA NO FINAL */}
+        <div className="mt-8 p-6 bg-slate-100 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 text-center animate-fade-in">
+            <div className="w-12 h-12 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+                <Headphones size={24} className="text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <h4 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Apoio ao Consumidor</h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Precisa de ajuda com o sistema?</p>
+            
+            <div className="mt-4 flex flex-col items-center gap-1">
+                <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">{supportPhone}</p>
+                <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase">Fersami SU</p>
+            </div>
+        </div>
+
+        <div className="text-center text-[10px] text-slate-400 mt-6 pb-4">
+            Versão 1.5.0 • Desenvolvido com Gemini IA
         </div>
     </div>
   );

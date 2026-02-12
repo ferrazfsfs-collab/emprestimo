@@ -19,7 +19,9 @@ const seedData = () => {
       capitalBalance: 10000, 
       initialized: true, 
       securityPin: '1234',
-      currency: 'BRL'
+      currency: 'BRL',
+      companyName: 'Fersami SU',
+      supportPhone: '949054619'
     };
     localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
   }
@@ -33,12 +35,21 @@ export const StorageService = {
     const config = data ? JSON.parse(data) : { capitalBalance: 0, initialized: false };
     // Ensure currency exists for old installs
     if (!config.currency) config.currency = 'BRL';
+    if (!config.companyName) config.companyName = 'Fersami SU';
+    if (!config.supportPhone) config.supportPhone = '949054619';
     return config;
   },
 
   updateCapital: (newBalance: number) => {
     const config = StorageService.getConfig();
     config.capitalBalance = newBalance;
+    localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+  },
+
+  saveCompanyInfo: (name: string, phone: string) => {
+    const config = StorageService.getConfig();
+    config.companyName = name;
+    config.supportPhone = phone;
     localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
   },
 

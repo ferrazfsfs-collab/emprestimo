@@ -28,6 +28,18 @@ const BottomNavItem: React.FC<{ to: string; icon: React.ElementType; label: stri
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [requiresAuth, setRequiresAuth] = useState(true);
+  const [companyName, setCompanyName] = useState('Controle de Empréstimos');
+
+  const updateConfig = () => {
+    const config = StorageService.getConfig();
+    setCompanyName(config.companyName || 'Fersami SU');
+    if (!config.securityPin) {
+      setRequiresAuth(false);
+      setIsAuthenticated(true);
+    } else {
+      setRequiresAuth(true);
+    }
+  };
 
   useEffect(() => {
     // Initialize Theme
@@ -38,13 +50,11 @@ const App: React.FC = () => {
       document.documentElement.classList.remove('dark');
     }
 
-    // Check auth and config
-    const config = StorageService.getConfig();
+    updateConfig();
 
-    if (!config.securityPin) {
-      setRequiresAuth(false);
-      setIsAuthenticated(true);
-    }
+    // Listen for config updates from settings
+    window.addEventListener('configUpdate', updateConfig);
+    return () => window.removeEventListener('configUpdate', updateConfig);
   }, []);
 
   const handleLogin = () => {
@@ -69,8 +79,8 @@ const App: React.FC = () => {
                 <Banknote size={20} />
             </div>
             <div className="overflow-hidden">
-                 <h1 className="font-bold text-lg tracking-wide leading-none truncate">Controle de Empréstimos</h1>
-                 <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold truncate">Sistema de Gestão</p>
+                 <h1 className="font-bold text-lg tracking-wide leading-none truncate">{companyName}</h1>
+                 <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold truncate">Gestão de Empréstimos</p>
             </div>
         </header>
 

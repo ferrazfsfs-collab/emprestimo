@@ -68,5 +68,6 @@ export interface AppConfig {
   securityPin?: string; // Optional: If set, requires login
   currency?: CurrencyCode;
   companyName?: string;
+  supportPhone?: string;
   logo?: string; // Base64 encoded image
 }
