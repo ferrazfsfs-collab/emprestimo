@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { StorageService } from '../services/storage';
+import { AiService } from '../services/ai';
 import { Loan, LoanStatus } from '../types';
 import { Card, formatCurrency, StatusBadge, Button, formatDate } from '../components/ui';
-import { AlertCircle, Calendar, CheckCircle, TrendingUp, UserPlus, Banknote, ChevronRight, Wallet, Eye, EyeOff } from 'lucide-react';
+import { AlertCircle, Calendar, CheckCircle, TrendingUp, UserPlus, Banknote, ChevronRight, Wallet, Eye, EyeOff, Sparkles, X, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Dashboard: React.FC = () => {
@@ -14,16 +15,21 @@ const Dashboard: React.FC = () => {
   });
   const [capital, setCapital] = useState(0);
   const [dueTodayLoans, setDueTodayLoans] = useState<Loan[]>([]);
+  const [allLoans, setAllLoans] = useState<Loan[]>([]);
   
-  // State for visibility preference, defaults to true
+  // AI State
+  const [aiInsight, setAiInsight] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
   const [showCapital, setShowCapital] = useState(() => {
     const stored = localStorage.getItem('app_show_capital');
     return stored !== 'false';
   });
 
   useEffect(() => {
-    StorageService.updateLoanStatuses(); // Ensure statuses are current
+    StorageService.updateLoanStatuses();
     const loans = StorageService.getLoans();
+    setAllLoans(loans);
     const config = StorageService.getConfig();
     setCapital(config.capitalBalance);
 
@@ -38,13 +44,12 @@ const Dashboard: React.FC = () => {
     loans.forEach(loan => {
       const remaining = loan.totalAmount - (loan.payments?.reduce((acc, p) => acc + p.amount, 0) || 0);
       
-      // EXCLUDE Renegotiated loans from active totals
       if (loan.status !== LoanStatus.PAID && loan.status !== LoanStatus.CANCELLED && loan.status !== LoanStatus.RENEGOTIATED) {
         active++;
         
         if (loan.dueDate === today) {
           dueToday++;
-          amountDueToday += remaining; // Assuming full remaining amount is due if single installment
+          amountDueToday += remaining;
           todaysLoans.push(loan);
         }
 
@@ -58,6 +63,13 @@ const Dashboard: React.FC = () => {
     setDueTodayLoans(todaysLoans);
   }, []);
 
+  const handleAiAnalysis = async () => {
+    setIsAnalyzing(true);
+    const result = await AiService.analyzePortfolio(allLoans);
+    setAiInsight(result);
+    setIsAnalyzing(false);
+  };
+
   const toggleCapitalVisibility = () => {
     const newState = !showCapital;
     setShowCapital(newState);
@@ -66,7 +78,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in pt-2">
-      {/* Capital Card - Highlighted */}
+      {/* Capital Card */}
       <div className="bg-slate-900 dark:bg-slate-800 rounded-xl p-5 shadow-lg text-white border border-slate-700 relative overflow-hidden">
           <div className="flex justify-between items-start mb-2 relative z-10">
              <div className="flex items-center gap-3 opacity-90">
@@ -91,11 +103,51 @@ const Dashboard: React.FC = () => {
              Plafond atual para novos empréstimos
           </div>
 
-          {/* Decorative background element */}
           <div className="absolute -right-6 -bottom-10 opacity-5 pointer-events-none">
              <Banknote size={120} />
           </div>
       </div>
+
+      {/* AI Button Section */}
+      <div className="px-1">
+        <button 
+          onClick={handleAiAnalysis}
+          disabled={isAnalyzing}
+          className="w-full group relative overflow-hidden bg-gradient-to-r from-emerald-600 to-indigo-600 p-px rounded-xl transition-all active:scale-95 disabled:opacity-70"
+        >
+          <div className="bg-slate-900 dark:bg-slate-900/90 rounded-[11px] p-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-emerald-500/10 p-2 rounded-lg">
+                <Sparkles size={20} className={`text-emerald-400 ${isAnalyzing ? 'animate-spin' : 'group-hover:animate-pulse'}`} />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-bold text-white leading-none">Análise de Carteira IA</p>
+                <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest font-semibold">Consultoria Inteligente</p>
+              </div>
+            </div>
+            {isAnalyzing ? <Loader2 className="animate-spin text-slate-400" size={18} /> : <ChevronRight className="text-slate-600 group-hover:text-emerald-400" size={18} />}
+          </div>
+        </button>
+      </div>
+
+      {/* AI Insight Modal */}
+      {aiInsight && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <Card className="max-w-sm w-full relative overflow-hidden border-t-4 border-emerald-500">
+            <button onClick={() => setAiInsight(null)} className="absolute top-3 right-3 text-slate-400 hover:text-slate-600 dark:hover:text-white p-1">
+              <X size={20} />
+            </button>
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles size={18} className="text-emerald-500" />
+              <h3 className="font-bold text-slate-900 dark:text-white">Insights do Consultor IA</h3>
+            </div>
+            <div className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap max-h-60 overflow-y-auto pr-2 no-scrollbar">
+              {aiInsight}
+            </div>
+            <Button onClick={() => setAiInsight(null)} className="w-full mt-6 h-11 text-sm">Entendido</Button>
+          </Card>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
          <Link to="/loans/new" className="col-span-1">
