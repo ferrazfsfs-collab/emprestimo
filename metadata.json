@@ -1,0 +1,5 @@
+{
+  "name": "Controle de Empréstimos",
+  "description": "Sistema completo de gestão de microcrédito e empréstimos pessoais com controle de clientes, cálculo de juros, renegociação e fluxo de caixa.",
+  "requestFramePermissions": []
+}
